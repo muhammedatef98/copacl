@@ -21,17 +21,29 @@ import {
   Cloud,
   Settings,
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useSync } from "@/hooks/useSync";
+import { useClipboardMonitor } from "@/hooks/useClipboardMonitor";
 
 export default function Home() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [newItemContent, setNewItemContent] = useState("");
   const [newItemType, setNewItemType] = useState<"text" | "image" | "link">("text");
   const { syncItem, syncStatus } = useSync();
+  const { isMonitoring, toggleMonitoring, hasPermission, isSupported, itemsCaptured } = useClipboardMonitor();
+
+  // Redirect to setup if first time user and no permission
+  useEffect(() => {
+    const hasSeenSetup = localStorage.getItem("has_seen_setup");
+    if (isAuthenticated && isSupported && !hasPermission && !hasSeenSetup) {
+      localStorage.setItem("has_seen_setup", "true");
+      setLocation("/setup");
+    }
+  }, [isAuthenticated, isSupported, hasPermission, setLocation]);
 
   const utils = trpc.useUtils();
 
@@ -226,6 +238,22 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {isSupported && (
+                <Button
+                  variant={isMonitoring ? "default" : "outline"}
+                  size="sm"
+                  onClick={toggleMonitoring}
+                  className={isMonitoring ? "animate-pulse" : ""}
+                >
+                  <ClipboardList className="w-4 h-4 mr-2" />
+                  {isMonitoring ? "Monitoring" : "Start Monitor"}
+                  {itemsCaptured > 0 && (
+                    <span className="ml-2 px-1.5 py-0.5 text-xs bg-primary-foreground text-primary rounded-full">
+                      {itemsCaptured}
+                    </span>
+                  )}
+                </Button>
+              )}
               <Link href="/sync">
                 <Button variant="outline" size="sm">
                   <Cloud className="w-4 h-4 mr-2" />
