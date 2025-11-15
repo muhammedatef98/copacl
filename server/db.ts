@@ -93,8 +93,8 @@ export async function getUserByOpenId(openId: string) {
 export async function createClipboardItem(item: InsertClipboardItem) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(clipboardItems).values(item);
-  return result;
+  const result = await db.insert(clipboardItems).values(item).$returningId();
+  return { id: result[0].id };
 }
 
 export async function getUserClipboardItems(userId: number, limit = 50, offset = 0) {

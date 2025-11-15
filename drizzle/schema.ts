@@ -64,3 +64,50 @@ export const clipboardItemTags = mysqlTable("clipboardItemTags", {
 
 export type ClipboardItemTag = typeof clipboardItemTags.$inferSelect;
 export type InsertClipboardItemTag = typeof clipboardItemTags.$inferInsert;
+
+// Devices table for sync
+export const devices = mysqlTable("devices", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  deviceId: varchar("deviceId", { length: 255 }).notNull().unique(),
+  deviceName: varchar("deviceName", { length: 255 }).notNull(),
+  deviceType: varchar("deviceType", { length: 50 }), // ios, android, web
+  publicKey: text("publicKey").notNull(), // For E2E encryption
+  lastSyncAt: timestamp("lastSyncAt"),
+  isActive: int("isActive").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Device = typeof devices.$inferSelect;
+export type InsertDevice = typeof devices.$inferInsert;
+
+// Sync queue for encrypted data
+export const syncQueue = mysqlTable("syncQueue", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  deviceId: varchar("deviceId", { length: 255 }).notNull(),
+  itemId: int("itemId").notNull(), // clipboardItem id
+  action: mysqlEnum("action", ["create", "update", "delete"]).notNull(),
+  encryptedData: text("encryptedData"), // Encrypted clipboard item data
+  iv: varchar("iv", { length: 255 }), // Initialization vector for encryption
+  syncStatus: mysqlEnum("syncStatus", ["pending", "synced", "failed"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  syncedAt: timestamp("syncedAt"),
+});
+
+export type SyncQueue = typeof syncQueue.$inferSelect;
+export type InsertSyncQueue = typeof syncQueue.$inferInsert;
+
+// User encryption keys
+export const userKeys = mysqlTable("userKeys", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  encryptedMasterKey: text("encryptedMasterKey").notNull(), // Master key encrypted with user password
+  salt: varchar("salt", { length: 255 }).notNull(), // Salt for key derivation
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserKey = typeof userKeys.$inferSelect;
+export type InsertUserKey = typeof userKeys.$inferInsert;

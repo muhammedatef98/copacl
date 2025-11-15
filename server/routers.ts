@@ -93,6 +93,124 @@ export const appRouter = router({
         });
       }),
   }),
+
+  sync: router({
+    // Register or update device
+    registerDevice: protectedProcedure
+      .input(
+        z.object({
+          deviceId: z.string(),
+          deviceName: z.string(),
+          deviceType: z.string().optional(),
+          publicKey: z.string(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { registerDevice, getDeviceByDeviceId } = await import("./syncDb");
+        
+        // Check if device already exists
+        const existing = await getDeviceByDeviceId(input.deviceId);
+        if (existing) {
+          return { success: true, device: existing };
+        }
+        
+        const deviceId = await registerDevice({
+          userId: ctx.user.id,
+          ...input,
+        });
+        
+        return { success: true, deviceId };
+      }),
+
+    // Get user's devices
+    getDevices: protectedProcedure.query(async ({ ctx }) => {
+      const { getUserDevices } = await import("./syncDb");
+      return getUserDevices(ctx.user.id);
+    }),
+
+    // Deactivate device
+    deactivateDevice: protectedProcedure
+      .input(z.object({ deviceId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const { deactivateDevice } = await import("./syncDb");
+        await deactivateDevice(input.deviceId);
+        return { success: true };
+      }),
+
+    // Add item to sync queue
+    addToQueue: protectedProcedure
+      .input(
+        z.object({
+          deviceId: z.string(),
+          itemId: z.number(),
+          action: z.enum(["create", "update", "delete"]),
+          encryptedData: z.string().optional(),
+          iv: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { addToSyncQueue } = await import("./syncDb");
+        const syncId = await addToSyncQueue({
+          userId: ctx.user.id,
+          ...input,
+        });
+        return { success: true, syncId };
+      }),
+
+    // Get pending sync items
+    getPendingItems: protectedProcedure
+      .input(z.object({ deviceId: z.string() }).optional())
+      .query(async ({ ctx, input }) => {
+        const { getPendingSyncItems, getAllPendingSyncItems } = await import("./syncDb");
+        
+        if (input?.deviceId) {
+          return getPendingSyncItems(ctx.user.id, input.deviceId);
+        }
+        
+        return getAllPendingSyncItems(ctx.user.id);
+      }),
+
+    // Mark sync item as synced
+    markSynced: protectedProcedure
+      .input(z.object({ syncId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const { markSyncItemSynced } = await import("./syncDb");
+        await markSyncItemSynced(input.syncId);
+        return { success: true };
+      }),
+
+    // Store/update user encryption key
+    storeKey: protectedProcedure
+      .input(
+        z.object({
+          encryptedMasterKey: z.string(),
+          salt: z.string(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { storeUserKey } = await import("./syncDb");
+        await storeUserKey({
+          userId: ctx.user.id,
+          ...input,
+        });
+        return { success: true };
+      }),
+
+    // Get user encryption key
+    getKey: protectedProcedure.query(async ({ ctx }) => {
+      const { getUserKey } = await import("./syncDb");
+      return getUserKey(ctx.user.id);
+    }),
+
+    // Update device last sync time
+    updateLastSync: protectedProcedure
+      .input(z.object({ deviceId: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const { updateDeviceSync } = await import("./syncDb");
+        await updateDeviceSync(input.deviceId, new Date());
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

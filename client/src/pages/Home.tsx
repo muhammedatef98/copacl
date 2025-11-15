@@ -18,15 +18,20 @@ import {
   FileText,
   Star,
   Sparkles,
+  Cloud,
+  Settings,
 } from "lucide-react";
-import { useState } from "react";
+import { Link } from "wouter";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useSync } from "@/hooks/useSync";
 
 export default function Home() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [newItemContent, setNewItemContent] = useState("");
   const [newItemType, setNewItemType] = useState<"text" | "image" | "link">("text");
+  const { syncItem, syncStatus } = useSync();
 
   const utils = trpc.useUtils();
 
@@ -44,10 +49,15 @@ export default function Home() {
 
   // Mutations
   const createItem = trpc.clipboard.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       utils.clipboard.list.invalidate();
       setNewItemContent("");
       toast.success("Item added to clipboard!");
+      
+      // Sync if enabled
+      if (syncStatus.enabled && data.id) {
+        syncItem(data.id, "create", newItemContent);
+      }
     },
   });
 
@@ -99,6 +109,12 @@ export default function Home() {
         old?.filter((item) => item.id !== itemId)
       );
       return { previousItems };
+    },
+    onSuccess: (data, variables) => {
+      // Sync deletion if enabled
+      if (syncStatus.enabled) {
+        syncItem(variables.itemId, "delete");
+      }
     },
     onError: (err, variables, context) => {
       utils.clipboard.list.setData({ limit: 100 }, context?.previousItems);
@@ -209,15 +225,23 @@ export default function Home() {
                 <p className="text-xs text-muted-foreground">Welcome, {user?.name}</p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => clearAll.mutate()}
-              disabled={clearAll.isPending || !items?.length}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Clear All
-            </Button>
+            <div className="flex items-center gap-2">
+              <Link href="/sync">
+                <Button variant="outline" size="sm">
+                  <Cloud className="w-4 h-4 mr-2" />
+                  Sync
+                </Button>
+              </Link>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => clearAll.mutate()}
+                disabled={clearAll.isPending || !items?.length}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Clear All
+              </Button>
+            </div>
           </div>
         </div>
       </header>
