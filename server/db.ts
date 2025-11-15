@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { clipboardItems, InsertClipboardItem, InsertTag, InsertUser, tags, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,100 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Clipboard Items queries
+export async function createClipboardItem(item: InsertClipboardItem) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(clipboardItems).values(item);
+  return result;
+}
+
+export async function getUserClipboardItems(userId: number, limit = 50, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(clipboardItems)
+    .where(eq(clipboardItems.userId, userId))
+    .orderBy(desc(clipboardItems.isPinned), desc(clipboardItems.createdAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function searchClipboardItems(userId: number, searchTerm: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(clipboardItems)
+    .where(
+      and(
+        eq(clipboardItems.userId, userId),
+        like(clipboardItems.content, `%${searchTerm}%`)
+      )
+    )
+    .orderBy(desc(clipboardItems.isPinned), desc(clipboardItems.createdAt));
+}
+
+export async function togglePinClipboardItem(itemId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const item = await db
+    .select()
+    .from(clipboardItems)
+    .where(and(eq(clipboardItems.id, itemId), eq(clipboardItems.userId, userId)))
+    .limit(1);
+  
+  if (item.length === 0) throw new Error("Item not found");
+  
+  return db
+    .update(clipboardItems)
+    .set({ isPinned: item[0].isPinned ? 0 : 1 })
+    .where(eq(clipboardItems.id, itemId));
+}
+
+export async function toggleFavoriteClipboardItem(itemId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const item = await db
+    .select()
+    .from(clipboardItems)
+    .where(and(eq(clipboardItems.id, itemId), eq(clipboardItems.userId, userId)))
+    .limit(1);
+  
+  if (item.length === 0) throw new Error("Item not found");
+  
+  return db
+    .update(clipboardItems)
+    .set({ isFavorite: item[0].isFavorite ? 0 : 1 })
+    .where(eq(clipboardItems.id, itemId));
+}
+
+export async function deleteClipboardItem(itemId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .delete(clipboardItems)
+    .where(and(eq(clipboardItems.id, itemId), eq(clipboardItems.userId, userId)));
+}
+
+export async function clearAllClipboardItems(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(clipboardItems).where(eq(clipboardItems.userId, userId));
+}
+
+// Tags queries
+export async function createTag(tag: InsertTag) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(tags).values(tag);
+}
+
+export async function getUserTags(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(tags).where(eq(tags.userId, userId));
+}
