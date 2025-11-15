@@ -169,3 +169,13 @@
 - [ ] Prepare promotional video script (30-60 seconds) - Skipped per user request
 - [ ] Design social media assets
 - [ ] Create press kit
+
+
+## Deployment & Testing
+- [x] Preview landing page locally
+- [x] Create deployment guide for multiple platforms
+- [x] Package landing page for deployment
+- [ ] Deploy landing page to hosting platform (requires user action)
+- [ ] Build APK for testing (requires Android SDK locally or GitHub Actions)
+- [ ] Test APK on Android device
+- [ ] Document deployment URLs
