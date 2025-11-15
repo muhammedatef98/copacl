@@ -86,3 +86,7 @@
 - [ ] Test on different browsers (Chrome, Safari, Firefox)
 - [ ] Test on mobile devices (iOS Safari, Chrome Android)
 - [x] Handle permission denied scenarios gracefully
+
+
+## Enhancement Requests
+- [x] Auto-start monitoring immediately after user grants clipboard permission (without requiring "Start Monitor" button click)

@@ -22,7 +22,7 @@ export default function Setup() {
 
   const handleRequestPermission = async () => {
     setIsRequesting(true);
-    const granted = await requestPermission();
+    const granted = await requestPermission(true); // Pass true to auto-start monitoring
     setIsRequesting(false);
 
     if (granted) {

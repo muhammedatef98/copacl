@@ -31,7 +31,7 @@ export function useClipboardMonitor() {
   }, []);
 
   // Request clipboard permission
-  const requestPermission = useCallback(async (): Promise<boolean> => {
+  const requestPermission = useCallback(async (autoStart: boolean = false): Promise<boolean> => {
     if (!isClipboardSupported()) {
       toast.error("Clipboard API is not supported in this browser");
       return false;
@@ -44,6 +44,14 @@ export function useClipboardMonitor() {
       setState((prev) => ({ ...prev, hasPermission: true }));
       localStorage.setItem("clipboard_permission_granted", "true");
       toast.success("Clipboard access granted!");
+      
+      // Auto-start monitoring if requested
+      if (autoStart) {
+        setState((prev) => ({ ...prev, isMonitoring: true }));
+        localStorage.setItem("clipboard_monitoring_enabled", "true");
+        toast.success("🔍 Monitoring started automatically!");
+      }
+      
       return true;
     } catch (error) {
       console.error("Permission denied:", error);
