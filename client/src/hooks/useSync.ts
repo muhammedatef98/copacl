@@ -182,7 +182,8 @@ export function useSync() {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [syncStatus.enabled, pendingItems]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncStatus.enabled]);
 
   return {
     syncStatus,
