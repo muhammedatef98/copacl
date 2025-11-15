@@ -147,10 +147,13 @@ export function useClipboardMonitor() {
       clearInterval(monitorIntervalRef.current);
     }
 
-    // Start polling every 1.5 seconds
+    // Check immediately first
+    checkClipboard();
+    
+    // Start polling every 0.8 seconds for faster capture
     monitorIntervalRef.current = setInterval(() => {
       checkClipboard();
-    }, 1500);
+    }, 800);
 
     setState((prev) => ({ ...prev, isMonitoring: true }));
     localStorage.setItem("clipboard_monitoring_enabled", "true");
@@ -186,12 +189,8 @@ export function useClipboardMonitor() {
     const hadPermission = localStorage.getItem("clipboard_permission_granted") === "true";
 
     if (wasEnabled && hadPermission) {
-      // Delay auto-start by 1 second to avoid issues on page load
-      const timer = setTimeout(() => {
-        startMonitoring();
-      }, 1000);
-
-      return () => clearTimeout(timer);
+      // Start immediately without delay
+      startMonitoring();
     }
   }, [startMonitoring]);
 

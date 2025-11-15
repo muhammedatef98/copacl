@@ -112,3 +112,29 @@
 - [x] Implement folder rename functionality
 - [ ] Add item count badges on folders
 - [x] Create folder management page
+
+
+## Capacitor Native App Conversion
+- [ ] Install Capacitor core and CLI
+- [ ] Initialize Capacitor configuration
+- [ ] Add iOS platform
+- [ ] Add Android platform
+- [ ] Configure app icons and splash screens
+- [ ] Install Capacitor Clipboard plugin
+- [ ] Install Capacitor Share plugin
+- [ ] Install Capacitor Haptics plugin
+- [ ] Configure Android build settings
+- [ ] Configure iOS build settings
+- [ ] Build production web assets
+- [ ] Sync with native platforms
+- [ ] Generate Android APK/AAB
+- [ ] Test on Android device/emulator
+- [ ] Document deployment process
+
+
+## Performance & Monitoring Verification
+- [x] Verify automatic clipboard monitoring starts immediately after permission grant
+- [x] Test clipboard capture speed and responsiveness
+- [x] Optimize polling interval for better performance (reduced to 0.8s)
+- [x] Add visual feedback for successful captures
+- [x] Test with different content types (text, links, images)
