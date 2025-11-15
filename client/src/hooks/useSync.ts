@@ -10,7 +10,7 @@ import {
   importKey,
   storeEncryptionKey,
 } from "@/lib/encryption";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export interface SyncStatus {
@@ -28,28 +28,54 @@ export function useSync() {
     pendingItems: 0,
   });
   const [isSyncing, setIsSyncing] = useState(false);
+  const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const utils = trpc.useUtils();
-  const { data: devices = [] } = trpc.sync.getDevices.useQuery();
-  const { data: pendingItems = [] } = trpc.sync.getPendingItems.useQuery();
+  
+  // Disable automatic refetching to prevent infinite loops
+  const { data: devices = [], refetch: refetchDevices } = trpc.sync.getDevices.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+  });
+  
+  const { data: pendingItems = [], refetch: refetchPending } = trpc.sync.getPendingItems.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+  });
+  
   const registerDeviceMutation = trpc.sync.registerDevice.useMutation();
   const addToQueueMutation = trpc.sync.addToQueue.useMutation();
   const markSyncedMutation = trpc.sync.markSynced.useMutation();
   const updateLastSyncMutation = trpc.sync.updateLastSync.useMutation();
 
-  // Update sync status
+  // Update sync status when devices or pending items change
   useEffect(() => {
     const currentDevice = devices.find((d) => d.deviceId === getDeviceId());
-    setSyncStatus({
-      enabled: devices.length > 0,
-      lastSync: currentDevice?.lastSyncAt || null,
-      deviceCount: devices.length,
-      pendingItems: pendingItems.length,
+    setSyncStatus((prev) => {
+      const newStatus = {
+        enabled: devices.length > 0,
+        lastSync: currentDevice?.lastSyncAt || null,
+        deviceCount: devices.length,
+        pendingItems: pendingItems.length,
+      };
+      
+      // Only update if values actually changed
+      if (
+        prev.enabled !== newStatus.enabled ||
+        prev.deviceCount !== newStatus.deviceCount ||
+        prev.pendingItems !== newStatus.pendingItems ||
+        prev.lastSync?.getTime() !== newStatus.lastSync?.getTime()
+      ) {
+        return newStatus;
+      }
+      return prev;
     });
   }, [devices, pendingItems]);
 
   // Initialize sync (register device)
-  const initializeSync = async () => {
+  const initializeSync = useCallback(async () => {
     try {
       const deviceId = getDeviceId();
       const deviceName = getDeviceName();
@@ -74,7 +100,7 @@ export function useSync() {
         storeEncryptionKey(encryptionKey);
       }
 
-      utils.sync.getDevices.invalidate();
+      await refetchDevices();
       toast.success("Sync enabled successfully!");
       return true;
     } catch (error) {
@@ -82,10 +108,10 @@ export function useSync() {
       toast.error("Failed to enable sync");
       return false;
     }
-  };
+  }, [registerDeviceMutation, refetchDevices]);
 
   // Sync clipboard item
-  const syncItem = async (
+  const syncItem = useCallback(async (
     itemId: number,
     action: "create" | "update" | "delete",
     content?: string
@@ -118,15 +144,26 @@ export function useSync() {
         iv,
       });
 
-      utils.sync.getPendingItems.invalidate();
+      await refetchPending();
     } catch (error) {
       console.error("Failed to sync item:", error);
     }
-  };
+  }, [addToQueueMutation, refetchPending]);
 
   // Process pending sync items
-  const processPendingItems = async () => {
-    if (isSyncing || pendingItems.length === 0) return;
+  const processPendingItems = useCallback(async () => {
+    if (isSyncing) {
+      console.log("Sync already in progress, skipping...");
+      return;
+    }
+    
+    // Refetch to get latest pending items
+    const { data: latestPending } = await refetchPending();
+    
+    if (!latestPending || latestPending.length === 0) {
+      console.log("No pending items to sync");
+      return;
+    }
 
     setIsSyncing(true);
     try {
@@ -138,7 +175,7 @@ export function useSync() {
 
       const encryptionKey = await importKey(encryptionKeyString);
 
-      for (const item of pendingItems) {
+      for (const item of latestPending) {
         try {
           // Decrypt and apply changes
           if (item.encryptedData && item.iv) {
@@ -164,26 +201,40 @@ export function useSync() {
       const deviceId = getDeviceId();
       await updateLastSyncMutation.mutateAsync({ deviceId });
 
-      utils.sync.getPendingItems.invalidate();
-      utils.sync.getDevices.invalidate();
+      await refetchPending();
+      await refetchDevices();
     } catch (error) {
       console.error("Failed to process pending items:", error);
     } finally {
       setIsSyncing(false);
     }
-  };
+  }, [isSyncing, markSyncedMutation, updateLastSyncMutation, refetchPending, refetchDevices]);
 
-  // Auto-sync every 30 seconds
+  // Setup auto-sync interval
   useEffect(() => {
-    if (!syncStatus.enabled) return;
+    // Clear any existing interval
+    if (syncIntervalRef.current) {
+      clearInterval(syncIntervalRef.current);
+      syncIntervalRef.current = null;
+    }
 
-    const interval = setInterval(() => {
-      processPendingItems();
-    }, 30000);
+    // Only setup interval if sync is enabled
+    if (syncStatus.enabled) {
+      console.log("Setting up auto-sync interval (every 30 seconds)");
+      syncIntervalRef.current = setInterval(() => {
+        console.log("Auto-sync triggered");
+        processPendingItems();
+      }, 30000);
+    }
 
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [syncStatus.enabled]);
+    // Cleanup on unmount or when sync is disabled
+    return () => {
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+        syncIntervalRef.current = null;
+      }
+    };
+  }, [syncStatus.enabled, processPendingItems]);
 
   return {
     syncStatus,
@@ -192,6 +243,8 @@ export function useSync() {
     syncItem,
     processPendingItems,
     devices,
+    refetchDevices,
+    refetchPending,
   };
 }
 

@@ -69,4 +69,4 @@
 - [x] Test multi-device sync
 
 ## Bug Fixes
-- [x] Fix infinite loop in useSync hook causing "Maximum update depth exceeded" error
+- [x] Fix infinite loop in useSync hook causing "Maximum update depth exceeded" error (FIXED - disabled auto-refetch and used useCallback)
