@@ -1,6 +1,6 @@
 import { and, desc, eq, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { clipboardItems, InsertClipboardItem, InsertTag, InsertUser, tags, users } from "../drizzle/schema";
+import { clipboardItems, folders, InsertClipboardItem, InsertFolder, InsertTag, InsertUser, tags, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -185,4 +185,49 @@ export async function getUserTags(userId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(tags).where(eq(tags.userId, userId));
+}
+
+
+// Folder operations
+export async function createFolder(folder: InsertFolder) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(folders).values(folder);
+  return result;
+}
+
+export async function getUserFolders(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(folders).where(eq(folders.userId, userId)).orderBy(folders.sortOrder, folders.name);
+}
+
+export async function updateFolder(folderId: number, updates: Partial<InsertFolder>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(folders).set(updates).where(eq(folders.id, folderId));
+}
+
+export async function deleteFolder(folderId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  // First, set folderId to null for all items in this folder
+  await db.update(clipboardItems).set({ folderId: null }).where(eq(clipboardItems.folderId, folderId));
+  
+  // Then delete the folder
+  return db.delete(folders).where(eq(folders.id, folderId));
+}
+
+export async function moveItemToFolder(itemId: number, folderId: number | null) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(clipboardItems).set({ folderId }).where(eq(clipboardItems.id, itemId));
+}
+
+export async function getFolderItemCount(folderId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const items = await db.select().from(clipboardItems).where(eq(clipboardItems.folderId, folderId));
+  return items.length;
 }

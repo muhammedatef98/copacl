@@ -20,12 +20,18 @@ import {
   Sparkles,
   Cloud,
   Settings,
+  ExternalLink,
+  Share2,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useSync } from "@/hooks/useSync";
 import { useClipboardMonitor } from "@/hooks/useClipboardMonitor";
+import FolderSidebar from "@/components/FolderSidebar";
+import { useDndContext, DndContext, DragEndEvent, DragOverlay } from "@dnd-kit/core";
 
 export default function Home() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
@@ -33,6 +39,7 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
   const [newItemContent, setNewItemContent] = useState("");
   const [newItemType, setNewItemType] = useState<"text" | "image" | "link">("text");
+  const [selectedFolder, setSelectedFolder] = useState<number | null | "all" | "favorites">("all");
   const { syncItem, syncStatus } = useSync();
   const { isMonitoring, toggleMonitoring, hasPermission, isSupported, itemsCaptured } = useClipboardMonitor();
 
@@ -144,6 +151,13 @@ export default function Home() {
     },
   });
 
+  const moveItem = trpc.folders.moveItem.useMutation({
+    onSuccess: () => {
+      utils.clipboard.list.invalidate();
+      toast.success("Item moved to folder!");
+    },
+  });
+
   const handleAddItem = () => {
     if (!newItemContent.trim()) {
       toast.error("Please enter some content");
@@ -165,7 +179,25 @@ export default function Home() {
     }
   };
 
-  const displayItems = searchTerm ? searchResults : items;
+  // Filter items by selected folder
+  let displayItems = searchTerm ? searchResults : items;
+  if (selectedFolder === "favorites") {
+    displayItems = displayItems?.filter((item) => item.isFavorite);
+  } else if (selectedFolder === null) {
+    displayItems = displayItems?.filter((item) => !item.folderId);
+  } else if (typeof selectedFolder === "number") {
+    displayItems = displayItems?.filter((item) => item.folderId === selectedFolder);
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const itemId = parseInt(active.id as string);
+    const folderId = over.id === "uncategorized" ? null : parseInt(over.id as string);
+
+    moveItem.mutate({ itemId, folderId });
+  };
 
   if (authLoading) {
     return (
@@ -274,7 +306,18 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="container py-8 space-y-6">
+      <main className="container py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Folder Sidebar */}
+          <div className="lg:col-span-1">
+            <FolderSidebar
+              selectedFolderId={selectedFolder}
+              onSelectFolder={setSelectedFolder}
+            />
+          </div>
+
+          {/* Main Content */}
+          <div className="lg:col-span-3 space-y-6">
         {/* Add New Item */}
         <Card className="p-6 space-y-4 border-border/50 bg-card/50 backdrop-blur">
           <div className="flex items-center gap-2">
@@ -363,6 +406,66 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Quick Actions for Links */}
+                    {item.type === "link" && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => window.open(item.content, "_blank")}
+                          title="Open Link"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            if (navigator.share) {
+                              navigator.share({
+                                title: "Shared from Copacl",
+                                url: item.content,
+                              }).catch(() => toast.error("Failed to share"));
+                            } else {
+                              handleCopyToClipboard(item.content);
+                              toast.info("Link copied! (Share not supported)");
+                            }
+                          }}
+                          title="Share"
+                        >
+                          <Share2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
+                    
+                    {/* Quick Actions for Email */}
+                    {item.content.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => window.location.href = `mailto:${item.content}`}
+                        title="Send Email"
+                      >
+                        <Mail className="w-4 h-4" />
+                      </Button>
+                    )}
+                    
+                    {/* Quick Actions for Phone */}
+                    {item.content.match(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => window.location.href = `tel:${item.content}`}
+                        title="Call"
+                      >
+                        <Phone className="w-4 h-4" />
+                      </Button>
+                    )}
+                    
                     <Button
                       variant="ghost"
                       size="icon"
@@ -414,6 +517,8 @@ export default function Home() {
               </p>
             </Card>
           )}
+        </div>
+          </div>
         </div>
       </main>
     </div>

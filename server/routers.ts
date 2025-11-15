@@ -211,6 +211,69 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  folders: router({    list: protectedProcedure.query(async ({ ctx }) => {
+      const { getUserFolders } = await import("./db");
+      return getUserFolders(ctx.user.id);
+    }),
+
+    create: protectedProcedure
+      .input(
+        z.object({
+          name: z.string(),
+          color: z.string().optional(),
+          icon: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { createFolder } = await import("./db");
+        return createFolder({
+          userId: ctx.user.id,
+          ...input,
+        });
+      }),
+
+    update: protectedProcedure
+      .input(
+        z.object({
+          folderId: z.number(),
+          name: z.string().optional(),
+          color: z.string().optional(),
+          icon: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { updateFolder } = await import("./db");
+        const { folderId, ...updates } = input;
+        return updateFolder(folderId, updates);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ folderId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const { deleteFolder } = await import("./db");
+        return deleteFolder(input.folderId);
+      }),
+
+    moveItem: protectedProcedure
+      .input(
+        z.object({
+          itemId: z.number(),
+          folderId: z.number().nullable(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { moveItemToFolder } = await import("./db");
+        return moveItemToFolder(input.itemId, input.folderId);
+      }),
+
+    getItemCount: protectedProcedure
+      .input(z.object({ folderId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const { getFolderItemCount } = await import("./db");
+        return getFolderItemCount(input.folderId);
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

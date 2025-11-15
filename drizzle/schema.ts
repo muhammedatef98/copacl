@@ -33,6 +33,7 @@ export const clipboardItems = mysqlTable("clipboardItems", {
   content: text("content").notNull(),
   imageUrl: text("imageUrl"),
   metadata: text("metadata"), // JSON string for additional data
+  folderId: int("folderId"), // NULL means uncategorized
   isPinned: int("isPinned").default(0).notNull(), // 0 = false, 1 = true
   isFavorite: int("isFavorite").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -111,3 +112,18 @@ export const userKeys = mysqlTable("userKeys", {
 
 export type UserKey = typeof userKeys.$inferSelect;
 export type InsertUserKey = typeof userKeys.$inferInsert;
+
+// Folders table for organizing clipboard items
+export const folders = mysqlTable("folders", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  color: varchar("color", { length: 20 }).default("#8b5cf6"), // Default purple
+  icon: varchar("icon", { length: 50 }), // Icon name or emoji
+  sortOrder: int("sortOrder").default(0), // For custom ordering
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Folder = typeof folders.$inferSelect;
+export type InsertFolder = typeof folders.$inferInsert;

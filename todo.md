@@ -90,3 +90,25 @@
 
 ## Enhancement Requests
 - [x] Auto-start monitoring immediately after user grants clipboard permission (without requiring "Start Monitor" button click)
+
+
+## Quick Actions Feature
+- [x] Add quick action buttons for links (Open, Copy, Share)
+- [ ] Add quick action buttons for text items (Copy, Edit)
+- [x] Add quick action buttons for emails (Copy, Send Email)
+- [x] Add quick action buttons for phone numbers (Copy, Call)
+- [x] Implement share functionality using Web Share API
+- [x] Add visual feedback for quick actions
+
+## Folders & Organization System
+- [x] Design folders database schema
+- [x] Add folders table to database
+- [x] Create folder CRUD operations (create, read, update, delete)
+- [x] Build folder sidebar UI
+- [x] Implement drag and drop for items into folders
+- [ ] Add "Move to Folder" context menu
+- [x] Create "All Items" and "Uncategorized" default views
+- [x] Add folder color customization
+- [x] Implement folder rename functionality
+- [ ] Add item count badges on folders
+- [x] Create folder management page
