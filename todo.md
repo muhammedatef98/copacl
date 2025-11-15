@@ -140,3 +140,16 @@
 - [x] Optimize polling interval for better performance (reduced to 0.8s)
 - [x] Add visual feedback for successful captures
 - [x] Test with different content types (text, links, images)
+
+
+## App Store Assets & Deployment
+- [x] Generate app icon (512x512 for Android, 1024x1024 for iOS)
+- [x] Create splash screen (2732x2732)
+- [x] Take screenshots for Google Play Store
+- [ ] Take screenshots for Apple App Store (requires macOS)
+- [x] Generate Android keystore for code signing
+- [x] Configure Android build.gradle with signing config
+- [x] Document final deployment steps
+- [ ] Build debug APK for testing (requires Android SDK locally)
+- [ ] Build release APK (requires Android SDK locally)
+- [ ] Test APK on Android device

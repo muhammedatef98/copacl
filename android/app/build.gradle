@@ -3,6 +3,16 @@ apply plugin: 'com.android.application'
 android {
     namespace "com.copacl.app"
     compileSdk rootProject.ext.compileSdkVersion
+    
+    signingConfigs {
+        release {
+            storeFile file("../../copacl-release-key.keystore")
+            storePassword "copacl2024"
+            keyAlias "copacl"
+            keyPassword "copacl2024"
+        }
+    }
+    
     defaultConfig {
         applicationId "com.copacl.app"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -20,6 +30,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
 }
